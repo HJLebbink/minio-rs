@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use async_trait::async_trait;
+use http::HeaderMap;
 use tokio_stream::StreamExt;
 
 use crate::s3::{
@@ -23,7 +24,7 @@ use crate::s3::{
 };
 
 pub struct GetObjectResponse {
-    pub headers: http::HeaderMap,
+    pub headers: HeaderMap,
     pub region: String,
     pub bucket_name: String,
     pub object_name: String,
@@ -39,32 +40,32 @@ impl FromS3Response for GetObjectResponse {
         req: S3Request<'a>,
         response: reqwest::Response,
     ) -> Result<Self, Error> {
-        let header_map = response.headers().clone();
-        let version_id = header_map
+        let headers = response.headers().clone();
+        let version_id = headers
             .get("x-amz-version-id")
             .map(|v| v.to_str().unwrap().to_string());
 
-        let etag = header_map
+        let etag = headers
             .get("etag")
             .map(|v| v.to_str().unwrap().trim_matches('"').to_string());
 
-        let content_length = response
+        let object_size = response
             .content_length()
             .ok_or(Error::ContentLengthUnknown)?;
         let body = response.bytes_stream().map(|result| {
             result.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
         });
 
-        let content = ObjectContent::new_from_stream(body, Some(content_length));
+        let content = ObjectContent::new_from_stream(body, Some(object_size));
 
         Ok(GetObjectResponse {
-            headers: header_map,
+            headers,
             region: req.region.unwrap_or("").to_string(),
             bucket_name: req.bucket.unwrap().to_string(),
             object_name: req.object.unwrap().to_string(),
             version_id,
             content,
-            object_size: content_length,
+            object_size,
             etag,
         })
     }

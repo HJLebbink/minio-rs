@@ -526,10 +526,9 @@ impl ClientTest {
             .unwrap();
 
         let filename = rand_object_name();
+
         self.client
-            .download_object(
-                &DownloadObjectArgs::new(&self.test_bucket, &object_name, &filename).unwrap(),
-            )
+            .download_object(&self.test_bucket, &object_name, &filename)
             .await
             .unwrap();
         assert!(ClientTest::get_hash(&object_name) == ClientTest::get_hash(&filename));
@@ -561,12 +560,8 @@ impl ClientTest {
             .unwrap();
 
         let filename = rand_object_name();
-        self.client
-            .download_object(
-                &DownloadObjectArgs::new(&self.test_bucket, &object_name, &filename).unwrap(),
-            )
-            .await
-            .unwrap();
+
+        self.client.download_object(&self.test_bucket, &object_name, &filename);
         assert!(ClientTest::get_hash(&object_name) == ClientTest::get_hash(&filename));
 
         fs::remove_file(&object_name).unwrap();
