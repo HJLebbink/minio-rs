@@ -43,10 +43,10 @@ use dashmap::DashMap;
 use hyper::http::Method;
 use reqwest::header::HeaderMap;
 use reqwest::Body;
-use tokio::fs;
 
 use xmltree::Element;
 
+mod download_object;
 mod get_object;
 mod list_objects;
 mod listen_bucket_notification;
@@ -1504,55 +1504,6 @@ impl Client {
         Ok(DeleteObjectTagsResponse {
             headers: resp.headers().clone(),
             region: region.clone(),
-            bucket_name: args.bucket.to_string(),
-            object_name: args.object.to_string(),
-            version_id: args.version_id.as_ref().map(|v| v.to_string()),
-        })
-    }
-
-    pub async fn download_object(
-        &self,
-        args: &DownloadObjectArgs<'_>,
-    ) -> Result<DownloadObjectResponse, Error> {
-        let mut resp = self
-            .get_object_old(&GetObjectArgs {
-                extra_headers: args.extra_headers,
-                extra_query_params: args.extra_query_params,
-                region: args.region,
-                bucket: args.bucket,
-                object: args.object,
-                version_id: args.version_id,
-                ssec: args.ssec,
-                offset: None,
-                length: None,
-                match_etag: None,
-                not_match_etag: None,
-                modified_since: None,
-                unmodified_since: None,
-            })
-            .await?;
-        let path = Path::new(&args.filename);
-        if let Some(parent_dir) = path.parent() {
-            if !parent_dir.exists() {
-                fs::create_dir_all(parent_dir).await?;
-            }
-        }
-        let mut file = match args.overwrite {
-            true => File::create(args.filename)?,
-            false => File::options()
-                .write(true)
-                .truncate(true)
-                .create_new(true)
-                .open(args.filename)?,
-        };
-        while let Some(v) = resp.chunk().await? {
-            file.write_all(&v)?;
-        }
-        file.sync_all()?;
-
-        Ok(DownloadObjectResponse {
-            headers: resp.headers().clone(),
-            region: args.region.map_or(String::new(), String::from),
             bucket_name: args.bucket.to_string(),
             object_name: args.object.to_string(),
             version_id: args.version_id.as_ref().map(|v| v.to_string()),

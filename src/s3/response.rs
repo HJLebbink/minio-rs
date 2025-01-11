@@ -32,6 +32,7 @@ use crate::s3::utils::{
 };
 
 mod buckets;
+mod download_object;
 mod get_object;
 pub(crate) mod list_objects;
 mod listen_bucket_notification;
@@ -712,14 +713,4 @@ pub struct GetPresignedObjectUrlResponse {
     pub object_name: String,
     pub version_id: Option<String>,
     pub url: String,
-}
-
-#[derive(Clone, Debug)]
-/// Response of [download_object()](crate::s3::client::Client::download_object) API
-pub struct DownloadObjectResponse {
-    pub headers: HeaderMap,
-    pub region: String,
-    pub bucket_name: String,
-    pub object_name: String,
-    pub version_id: Option<String>,
 }

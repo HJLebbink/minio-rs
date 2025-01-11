@@ -2202,55 +2202,6 @@ impl<'a> PostPolicy<'a> {
     }
 }
 
-/// Argument for [download_object()](crate::s3::client::Client::download_object) API
-pub struct DownloadObjectArgs<'a> {
-    pub extra_headers: Option<&'a Multimap>,
-    pub extra_query_params: Option<&'a Multimap>,
-    pub region: Option<&'a str>,
-    pub bucket: &'a str,
-    pub object: &'a str,
-    pub version_id: Option<&'a str>,
-    pub ssec: Option<&'a SseCustomerKey>,
-    pub filename: &'a str,
-    pub overwrite: bool,
-}
-
-impl<'a> DownloadObjectArgs<'a> {
-    /// Returns argument for [download_object()](crate::s3::client::Client::download_object) API with given bucket name, object name and filename
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use minio::s3::args::*;
-    /// let args = DownloadObjectArgs::new("my-bucket", "my-object", "/path/to/my/object/download").unwrap();
-    /// ```
-    pub fn new(
-        bucket_name: &'a str,
-        object_name: &'a str,
-        filename: &'a str,
-    ) -> Result<DownloadObjectArgs<'a>, Error> {
-        check_bucket_name(bucket_name, true)?;
-
-        if object_name.is_empty() {
-            return Err(Error::InvalidObjectName(String::from(
-                "object name cannot be empty",
-            )));
-        }
-
-        Ok(DownloadObjectArgs {
-            extra_headers: None,
-            extra_query_params: None,
-            region: None,
-            bucket: bucket_name,
-            object: object_name,
-            version_id: None,
-            ssec: None,
-            filename,
-            overwrite: false,
-        })
-    }
-}
-
 /// Argument for [upload_object()](crate::s3::client::Client::upload_object) API
 pub struct UploadObjectArgs<'a> {
     pub extra_headers: Option<&'a Multimap>,
