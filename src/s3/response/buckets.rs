@@ -5,7 +5,7 @@ use xmltree::Element;
 
 use crate::s3::{
     error::Error,
-    types::{Bucket, FromS3Response, S3Request},
+    types::{Bucket, FromS3Response, S3Request, SseConfig},
     utils::{from_iso8601utc, get_option_text, get_text},
 };
 
@@ -70,9 +70,52 @@ impl FromS3Response for GetBucketVersioningResponse {
         Ok(GetBucketVersioningResponse {
             headers,
             region: req.get_computed_region(),
-            bucket: req.bucket.unwrap().to_string(),
+            bucket: req.bucket.unwrap().to_string(), // TODO remove unwrap
             status: get_option_text(&root, "Status").map(|v| v == "Enabled"),
             mfa_delete: get_option_text(&root, "MFADelete").map(|v| v == "Enabled"),
+        })
+    }
+}
+
+/// Response of
+/// [get_bucket_encryption()](crate::s3::client::Client::get_bucket_encryption)
+/// API
+#[derive(Clone, Debug)]
+pub struct GetBucketEncryptionResponse {
+    pub headers: HeaderMap,
+    pub region: String,
+    pub bucket: String,
+    pub config: SseConfig,
+}
+
+#[async_trait]
+impl FromS3Response for GetBucketEncryptionResponse {
+    async fn from_s3response<'a>(
+        req: S3Request<'a>,
+        resp: reqwest::Response,
+    ) -> Result<Self, Error> {
+        let headers = resp.headers().clone();
+        let body = resp.bytes().await?;
+        let mut root = Element::parse(body.reader())?;
+
+        let rule = root
+            .get_mut_child("Rule")
+            .ok_or(Error::XmlError(String::from("<Rule> tag not found")))?;
+
+        let sse_by_default = rule
+            .get_mut_child("ApplyServerSideEncryptionByDefault")
+            .ok_or(Error::XmlError(String::from(
+                "<ApplyServerSideEncryptionByDefault> tag not found",
+            )))?;
+
+        Ok(GetBucketEncryptionResponse {
+            headers,
+            region: req.get_computed_region(),
+            bucket: req.bucket.unwrap().to_string(), // TODO remove unwrap
+            config: SseConfig {
+                sse_algorithm: get_text(sse_by_default, "SSEAlgorithm")?,
+                kms_master_key_id: get_option_text(sse_by_default, "KMSMasterKeyID"),
+            },
         })
     }
 }

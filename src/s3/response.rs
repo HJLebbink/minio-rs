@@ -25,7 +25,7 @@ use xmltree::Element;
 use crate::s3::error::Error;
 use crate::s3::types::{
     parse_legal_hold, LifecycleConfig, NotificationConfig, ObjectLockConfig, ReplicationConfig,
-    RetentionMode, SelectProgress, SseConfig,
+    RetentionMode, SelectProgress,
 };
 use crate::s3::utils::{
     copy_slice, crc32, from_http_header_value, from_iso8601utc, get_text, uint32, UtcTime,
@@ -38,7 +38,7 @@ mod listen_bucket_notification;
 mod put_object;
 mod remove_objects;
 
-pub use buckets::{GetBucketVersioningResponse, ListBucketsResponse};
+pub use buckets::{GetBucketEncryptionResponse, GetBucketVersioningResponse, ListBucketsResponse};
 pub use get_object::GetObjectResponse;
 pub use list_objects::ListObjectsResponse;
 pub use listen_bucket_notification::ListenBucketNotificationResponse;
@@ -547,15 +547,6 @@ impl SelectObjectContentResponse {
 
 /// Response of [delete_bucket_encryption()](crate::s3::client::Client::delete_bucket_encryption) API
 pub type DeleteBucketEncryptionResponse = BucketResponse;
-
-#[derive(Clone, Debug)]
-/// Response of [get_bucket_encryption()](crate::s3::client::Client::get_bucket_encryption) API
-pub struct GetBucketEncryptionResponse {
-    pub headers: HeaderMap,
-    pub region: String,
-    pub bucket_name: String,
-    pub config: SseConfig,
-}
 
 /// Response of [set_bucket_encryption()](crate::s3::client::Client::set_bucket_encryption) API
 pub type SetBucketEncryptionResponse = BucketResponse;
