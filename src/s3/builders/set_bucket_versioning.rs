@@ -1,0 +1,127 @@
+// MinIO Rust Library for Amazon S3 Compatible Cloud Storage
+// Copyright 2025 MinIO, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use crate::s3::builders::SegmentedBytes;
+use crate::s3::error::Error;
+use crate::s3::response::SetBucketVersioningResponse;
+use crate::s3::types::{S3Api, S3Request, ToS3Request};
+use crate::s3::utils::{check_bucket_name, merge, Multimap};
+use crate::s3::Client;
+use bytes::Bytes;
+use http::Method;
+
+/// Argument builder for [set_bucket_encryption()](Client::set_bucket_encryption) API
+#[derive(Clone, Debug, Default)]
+pub struct SetBucketVersioning {
+    pub(crate) client: Option<Client>,
+
+    pub(crate) extra_headers: Option<Multimap>,
+    pub(crate) extra_query_params: Option<Multimap>,
+    pub(crate) region: Option<String>,
+    pub(crate) bucket: String,
+
+    pub(crate) status: bool,
+    pub(crate) mfa_delete: Option<bool>,
+}
+
+impl SetBucketVersioning {
+    pub fn new(bucket: &str) -> Self {
+        Self {
+            bucket: bucket.to_owned(),
+            ..Default::default()
+        }
+    }
+    pub fn client(mut self, client: &Client) -> Self {
+        self.client = Some(client.clone());
+        self
+    }
+
+    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
+        self.extra_headers = extra_headers;
+        self
+    }
+
+    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
+        self.extra_query_params = extra_query_params;
+        self
+    }
+
+    pub fn region(mut self, region: Option<String>) -> Self {
+        self.region = region;
+        self
+    }
+
+    pub fn status(mut self, status: bool) -> Self {
+        self.status = status;
+        self
+    }
+
+    pub fn mfa_delete(mut self, mfa_delete: Option<bool>) -> Self {
+        self.mfa_delete = mfa_delete;
+        self
+    }
+}
+
+impl S3Api for SetBucketVersioning {
+    type S3Response = SetBucketVersioningResponse;
+}
+
+impl ToS3Request for SetBucketVersioning {
+    fn to_s3request(&self) -> Result<S3Request, Error> {
+        check_bucket_name(&self.bucket, true)?;
+        let mut headers = Multimap::new();
+        if let Some(v) = &self.extra_headers {
+            merge(&mut headers, v);
+        }
+
+        let mut query_params = Multimap::new();
+        if let Some(v) = &self.extra_query_params {
+            merge(&mut query_params, v);
+        }
+        query_params.insert(String::from("versioning"), String::new());
+
+        let mut data = String::from("<VersioningConfiguration>");
+        data.push_str("<Status>");
+        data.push_str(match self.status {
+            true => "Enabled",
+            false => "Suspended",
+        });
+        data.push_str("</Status>");
+        if let Some(v) = self.mfa_delete {
+            data.push_str("<MFADelete>");
+            data.push_str(match v {
+                true => "Enabled",
+                false => "Disabled",
+            });
+            data.push_str("</MFADelete>");
+        }
+        data.push_str("</VersioningConfiguration>");
+
+        let bytes: Bytes = data.into();
+        let body: Option<SegmentedBytes> = Some(SegmentedBytes::from(bytes));
+
+        let req = S3Request::new(
+            self.client.as_ref().ok_or(Error::NoClientProvided)?,
+            Method::GET,
+        )
+        .region(self.region.as_deref())
+        .bucket(Some(&self.bucket))
+        .query_params(query_params)
+        .headers(headers)
+        .body(body);
+
+        Ok(req)
+    }
+}
