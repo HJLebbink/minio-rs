@@ -17,7 +17,7 @@ use crate::s3::builders::SegmentedBytes;
 use crate::s3::error::Error;
 use crate::s3::response::SetBucketVersioningResponse;
 use crate::s3::types::{S3Api, S3Request, ToS3Request};
-use crate::s3::utils::{check_bucket_name, merge, Multimap};
+use crate::s3::utils::{check_bucket_name, Multimap};
 use crate::s3::Client;
 use bytes::Bytes;
 use http::Method;
@@ -81,46 +81,47 @@ impl S3Api for SetBucketVersioning {
 impl ToS3Request for SetBucketVersioning {
     fn to_s3request(&self) -> Result<S3Request, Error> {
         check_bucket_name(&self.bucket, true)?;
-        let mut headers = Multimap::new();
-        if let Some(v) = &self.extra_headers {
-            merge(&mut headers, v);
-        }
 
-        let mut query_params = Multimap::new();
-        if let Some(v) = &self.extra_query_params {
-            merge(&mut query_params, v);
-        }
-        query_params.insert(String::from("versioning"), String::new());
+        let headers = self
+            .extra_headers
+            .as_ref()
+            .filter(|v| !v.is_empty())
+            .cloned()
+            .unwrap_or_default();
+        let mut query_params = self
+            .extra_query_params
+            .as_ref()
+            .filter(|v| !v.is_empty())
+            .cloned()
+            .unwrap_or_default();
 
-        let mut data = String::from("<VersioningConfiguration>");
-        data.push_str("<Status>");
-        data.push_str(match self.status {
-            true => "Enabled",
-            false => "Suspended",
-        });
-        data.push_str("</Status>");
-        if let Some(v) = self.mfa_delete {
-            data.push_str("<MFADelete>");
-            data.push_str(match v {
-                true => "Enabled",
-                false => "Disabled",
-            });
-            data.push_str("</MFADelete>");
-        }
-        data.push_str("</VersioningConfiguration>");
+        query_params.insert("versioning".into(), String::new());
 
-        let bytes: Bytes = data.into();
-        let body: Option<SegmentedBytes> = Some(SegmentedBytes::from(bytes));
+        let mfa_delete = self
+            .mfa_delete
+            .map(|v| {
+                format!(
+                    "<MFADelete>{}</MFADelete>",
+                    if v { "Enabled" } else { "Disabled" }
+                )
+            })
+            .unwrap_or_default();
 
-        let req = S3Request::new(
-            self.client.as_ref().ok_or(Error::NoClientProvided)?,
-            Method::GET,
-        )
-        .region(self.region.as_deref())
-        .bucket(Some(&self.bucket))
-        .query_params(query_params)
-        .headers(headers)
-        .body(body);
+        let data: String = format!(
+            "<VersioningConfiguration><Status>{}</Status>{}</VersioningConfiguration>",
+            if self.status { "Enabled" } else { "Suspended" },
+            mfa_delete
+        );
+
+        let body: Option<SegmentedBytes> = Some(SegmentedBytes::from(Bytes::from(data)));
+        let client: &Client = self.client.as_ref().ok_or(Error::NoClientProvided)?;
+
+        let req = S3Request::new(client, Method::PUT)
+            .region(self.region.as_deref())
+            .bucket(Some(&self.bucket))
+            .query_params(query_params)
+            .headers(headers)
+            .body(body);
 
         Ok(req)
     }

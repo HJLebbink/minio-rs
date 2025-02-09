@@ -2,6 +2,7 @@ use minio::s3::args::{BucketExistsArgs, MakeBucketArgs};
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
 use minio::s3::{Client, ClientBuilder};
+use std::str::FromStr;
 
 #[allow(dead_code)]
 pub fn create_client_on_play() -> Result<Client, Box<dyn std::error::Error + Send + Sync>> {
@@ -16,6 +17,23 @@ pub fn create_client_on_play() -> Result<Client, Box<dyn std::error::Error + Sen
 
     let client = ClientBuilder::new(base_url.clone())
         .provider(Some(Box::new(static_provider)))
+        .build()?;
+    Ok(client)
+}
+
+#[allow(dead_code)]
+pub fn create_client_on_localhost() -> Result<Client, Box<dyn std::error::Error + Send + Sync>> {
+    let mut base_url: BaseUrl = BaseUrl::from_str("http://[::1]:9000")?;
+    base_url.region = "MyMachine".to_string();
+    log::info!("Trying to connect to MinIO at: `{:#?}`", base_url);
+
+    let client = ClientBuilder::new(base_url.clone())
+        .provider(Some(Box::new(StaticProvider::new(
+            "xIdLgAnTeLUx71Vdjoyu",
+            "LJd5bEwZM1hjMpx5VWezU9u6QzARKtsOjDMwvATF",
+            None,
+        ))))
+        .ignore_cert_check(Some(true))
         .build()?;
     Ok(client)
 }

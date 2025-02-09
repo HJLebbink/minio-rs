@@ -39,7 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let _resp: SetBucketVersioningResponse = client
         .set_bucket_versioning(bucket_name)
         .status(true)
-        .mfa_delete(Some(true))
         .send()
         .await?;
 
@@ -55,7 +54,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let _resp: SetBucketVersioningResponse = client
         .set_bucket_versioning(bucket_name)
         .status(false)
-        .mfa_delete(Some(true))
         .send()
         .await?;
 
