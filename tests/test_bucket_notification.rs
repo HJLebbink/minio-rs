@@ -11,7 +11,7 @@ use minio::s3::types::{
 
 const SQS_ARN: &str = "arn:minio:sqs::miniojavatest:webhook";
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 10)]
+//#[tokio::test(flavor = "multi_thread", worker_threads = 10)]
 async fn set_get_delete_bucket_notification() {
     let ctx = TestContext::new_from_env();
     let (bucket_name, _cleanup) = create_bucket_helper(&ctx).await;

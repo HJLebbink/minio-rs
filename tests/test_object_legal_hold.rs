@@ -58,7 +58,7 @@ async fn object_legal_hold() {
         .await
         .unwrap();
     //println!("response of setting object legal hold: resp={:?}", resp);
-    assert_eq!(resp.object_name, object_name);
+    assert_eq!(resp.object, object_name);
     assert_eq!(resp.bucket, bucket_name);
     assert_eq!(resp.region, DEFAULT_REGION);
     assert_eq!(resp.version_id, None);
@@ -72,7 +72,7 @@ async fn object_legal_hold() {
         .unwrap();
     //println!("response of getting object legal hold: resp={:?}", resp);
     assert!(!resp.enabled);
-    assert_eq!(resp.object_name, object_name);
+    assert_eq!(resp.object, object_name);
     assert_eq!(resp.bucket, bucket_name);
     assert_eq!(resp.region, DEFAULT_REGION);
     assert_eq!(resp.version_id, None);
@@ -85,7 +85,7 @@ async fn object_legal_hold() {
         .await
         .unwrap();
     //println!("response of setting object legal hold: resp={:?}", resp);
-    assert_eq!(resp.object_name, object_name);
+    assert_eq!(resp.object, object_name);
     assert_eq!(resp.bucket, bucket_name);
     assert_eq!(resp.region, DEFAULT_REGION);
     assert_eq!(resp.version_id, None);
@@ -99,7 +99,7 @@ async fn object_legal_hold() {
         .unwrap();
     //println!("response of getting object legal hold: resp={:?}", resp);
     assert!(resp.enabled);
-    assert_eq!(resp.object_name, object_name);
+    assert_eq!(resp.object, object_name);
     assert_eq!(resp.bucket, bucket_name);
     assert_eq!(resp.region, DEFAULT_REGION);
     assert_eq!(resp.version_id, None);
