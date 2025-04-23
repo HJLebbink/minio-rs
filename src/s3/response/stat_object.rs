@@ -26,7 +26,7 @@ use crate::{impl_from_s3response, impl_has_s3fields};
 use bytes::Bytes;
 use http::HeaderMap;
 use std::collections::HashMap;
-use std::mem;
+use std::{fmt, mem};
 
 #[derive(Clone, Debug)]
 /// Response from the [`stat_object`](crate::s3::client::Client::stat_object) API call,
@@ -97,5 +97,11 @@ impl StatObjectResponse {
             }
         }
         Ok(user_metadata)
+    }
+}
+
+impl fmt::Display for StatObjectResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "StatObjectResponse {{ bucket: {}, region: {}, size: {:?}, headers: {:?} }}", self.bucket(), self.region(), self.size(), self.headers() )
     }
 }
