@@ -222,6 +222,7 @@ pub trait S3Api: ToS3Request {
     ///
     async fn send(self) -> Result<Self::S3Response, Error> {
         let mut req = self.to_s3request()?;
+        //req.inner_region = req.compute_inner_region()?;
         let resp: Result<reqwest::Response, Error> = req.execute().await;
         Self::S3Response::from_s3response(req, resp).await
     }
