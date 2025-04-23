@@ -27,6 +27,7 @@ use bytes::Bytes;
 use http::HeaderMap;
 use http::header::LAST_MODIFIED;
 use std::collections::HashMap;
+use std::{fmt, mem};
 
 /// Response from the [`stat_object`](crate::s3::client::MinioClient::stat_object) API.
 ///
@@ -101,5 +102,11 @@ impl StatObjectResponse {
             }
         }
         Ok(user_metadata)
+    }
+}
+
+impl fmt::Display for StatObjectResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "StatObjectResponse {{ bucket: {}, region: {}, size: {:?}, headers: {:?} }}", self.bucket(), self.region(), self.size(), self.headers() )
     }
 }
