@@ -27,6 +27,7 @@ const SQS_ARN: &str = "arn:minio:sqs::miniojavatest:webhook";
 #[minio_macros::test(skip_if_express)]
 async fn test_bucket_notification(ctx: TestContext, bucket_name: String) {
     let config: NotificationConfig = create_bucket_notification_config_example();
+    println!("NotificationConfig: {:?}", config);
 
     let resp: PutBucketNotificationResponse = ctx
         .client

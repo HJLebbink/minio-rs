@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use crate::s3::Client;
+use crate::s3::bucket_policy_config::BucketPolicyConfig;
 use crate::s3::error::Error;
 use crate::s3::multimap::Multimap;
 use crate::s3::response::PutBucketPolicyResponse;
@@ -35,7 +36,7 @@ pub struct PutBucketPolicy {
     region: Option<String>,
     bucket: String,
 
-    config: String, //TODO consider PolicyConfig struct
+    config: BucketPolicyConfig,
 }
 
 impl PutBucketPolicy {
@@ -63,7 +64,7 @@ impl PutBucketPolicy {
         self
     }
 
-    pub fn config(mut self, config: String) -> Self {
+    pub fn config(mut self, config: BucketPolicyConfig) -> Self {
         self.config = config;
         self
     }
@@ -77,7 +78,7 @@ impl ToS3Request for PutBucketPolicy {
     fn to_s3request(self) -> Result<S3Request, Error> {
         check_bucket_name(&self.bucket, true)?;
 
-        let bytes: Bytes = self.config.into();
+        let bytes: Bytes = self.config.to_xml().into();
         let body: Option<SegmentedBytes> = Some(SegmentedBytes::from(bytes));
 
         Ok(S3Request::new(self.client, Method::PUT)

@@ -39,6 +39,7 @@ pub enum ErrorCode {
     NoSuchObjectLockConfiguration,
     NoSuchLifecycleConfiguration,
     NoSuchKey,
+    RemoteTargetNotFound,
     ResourceNotFound,
     MethodNotAllowed,
     ResourceConflict,
@@ -78,6 +79,8 @@ impl ErrorCode {
             "bucketnotempty" => ErrorCode::BucketNotEmpty("".to_string()),
             "bucketalreadyownedbyyou" => ErrorCode::BucketAlreadyOwnedByYou,
             "invalidwriteoffset" => ErrorCode::InvalidWriteOffset,
+
+            "xminioadminremotetargetnotfounderror" => ErrorCode::RemoteTargetNotFound,
 
             v => ErrorCode::OtherError(v.to_owned()),
         }
@@ -177,6 +180,7 @@ pub enum Error {
     InvalidLifecycleRuleId,
     InvalidFilter,
     InvalidVersioningStatus(String),
+    InvalidBucketPolicy(String),
     PostPolicyError(String),
     InvalidObjectLockConfig(String),
     NoClientProvided,
@@ -343,6 +347,7 @@ impl fmt::Display for Error {
                 write!(f, "tag decoding failed: {error_message} on input '{input}'")
             }
             Error::ContentLengthUnknown => write!(f, "content length is unknown"),
+            Error::InvalidBucketPolicy(m) => write!(f, "invalid bucket policy {m}"),
         }
     }
 }

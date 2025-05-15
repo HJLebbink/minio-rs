@@ -1782,9 +1782,9 @@ impl ReplicationConfig {
         let mut data = String::from("<ReplicationConfiguration>");
 
         if let Some(v) = &self.role {
-            data.push_str("<Status>");
+            data.push_str("<Role>");
             data.push_str(v);
-            data.push_str("</Status>");
+            data.push_str("</Role>");
         }
 
         for rule in &self.rules {
