@@ -57,8 +57,29 @@ impl Client {
         bucket: S,
     ) -> Result<DeleteBucketResponse, Error> {
         let bucket: String = bucket.into();
+
+        match self.delete_bucket(&bucket).send().await {
+            Ok(resp) => Ok(resp),
+            Err(Error::S3Error(e)) => match e.code {
+                ErrorCode::NoSuchBucket => Ok(DeleteBucketResponse {
+                    headers: e.headers,
+                    bucket: e.bucket_name,
+                    region: String::new(),
+                }),
+                ErrorCode::BucketNotEmpty => {
+                    self.clear_bucket(&bucket).await?;
+                    self.delete_bucket(bucket).send().await
+                }
+                _ => Err(Error::S3Error(e)),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn clear_bucket<S: Into<String>>(&self, bucket: S) -> Result<(), Error> {
+        let bucket: String = bucket.into();
         if self.is_minio_express() {
-            let mut stream = self.list_objects(&bucket).to_stream().await;
+            let mut stream = self.list_objects(&bucket).recursive(true).to_stream().await;
 
             while let Some(items) = stream.next().await {
                 let mut resp = self
@@ -75,6 +96,7 @@ impl Client {
         } else {
             let mut stream = self
                 .list_objects(&bucket)
+                .recursive(true)
                 .include_versions(true)
                 .to_stream()
                 .await;
@@ -116,20 +138,6 @@ impl Client {
                 }
             }
         }
-        match self.delete_bucket(bucket).send().await {
-            Ok(resp) => Ok(resp),
-            Err(Error::S3Error(e)) => {
-                if e.code == ErrorCode::NoSuchBucket {
-                    Ok(DeleteBucketResponse {
-                        headers: e.headers,
-                        bucket: e.bucket_name,
-                        region: String::new(),
-                    })
-                } else {
-                    Err(Error::S3Error(e))
-                }
-            }
-            Err(e) => Err(e),
-        }
+        Ok(())
     }
 }

@@ -29,6 +29,7 @@ async fn test_bucket_notification() {
     let (bucket_name, _cleanup) = ctx.create_bucket_helper().await;
 
     let config: NotificationConfig = create_bucket_notification_config_example();
+    println!("NotificationConfig: {:?}", config);
 
     let resp: PutBucketNotificationResponse = ctx
         .client
