@@ -57,6 +57,7 @@
 
 #![allow(clippy::result_large_err)]
 #![allow(clippy::too_many_arguments)]
+mod madmin;
 pub mod s3;
 
 #[cfg(test)]
