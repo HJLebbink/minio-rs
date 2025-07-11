@@ -17,7 +17,8 @@ use clap::Parser;
 use log::info;
 use minio::s3::response::BucketExistsResponse;
 use minio::s3::types::S3Api;
-use minio::s3::{Client, builders::ObjectContent, client::ClientBuilder, creds::StaticProvider};
+use minio::s3::{MinioClient, MinioClientBuilder, builders::ObjectContent, creds::StaticProvider};
+use reqwest::ClientBuilder;
 use std::path::PathBuf;
 
 /// Upload a file to the given bucket and object path on the MinIO Play server.
@@ -41,20 +42,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         None,
     );
 
-    let client: Client = ClientBuilder::new("https://play.min.io".parse()?)
+    let client: MinioClient = MinioClientBuilder::new("https://play.min.io".parse()?)
         .provider(Some(static_provider))
         .build()?;
 
-    let resp: BucketExistsResponse = client.bucket_exists(&args.bucket).send().await.unwrap();
+    let resp: BucketExistsResponse = client
+        .bucket_exists(&args.bucket)
+        .build()
+        .send()
+        .await
+        .unwrap();
 
     if !resp.exists() {
-        client.create_bucket(&args.bucket).send().await.unwrap();
+        client
+            .create_bucket(&args.bucket)
+            .build()
+            .send()
+            .await
+            .unwrap();
     }
 
     let content = ObjectContent::from(args.file.as_path());
     // Put an object
     client
         .put_object_content(&args.bucket, &args.object, content)
+        .build()
         .send()
         .await?;
 
