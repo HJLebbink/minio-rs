@@ -29,55 +29,36 @@ use crate::s3::types::{S3Api, S3Request, ToS3Request};
 use crate::s3::utils::{check_bucket_name, check_object_name, check_sse};
 use http::Method;
 use std::sync::Arc;
+use typed_builder::TypedBuilder;
+
 // region: append-object
 
 /// Argument builder for the [`AppendObject`](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-buckets-objects-append.html) S3 API operation.
 ///
 /// This struct constructs the parameters required for the [`Client::append_object`](crate::s3::client::Client::append_object) method.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct AppendObject {
     client: Client,
 
+    #[builder(default, setter(strip_option))]
     extra_headers: Option<Multimap>,
+
+    #[builder(default, setter(strip_option))]
     extra_query_params: Option<Multimap>,
+
     bucket: String,
     object: String,
 
+    #[builder(default, setter(strip_option))]
     region: Option<String>,
+
+    #[builder(default, setter(strip_option))]
     sse: Option<Arc<dyn Sse>>,
-    data: SegmentedBytes,
+    
+    data: Arc<SegmentedBytes>,
 
     /// value of x-amz-write-offset-bytes
     offset_bytes: u64,
-}
-
-impl AppendObject {
-    pub fn new(
-        client: Client,
-        bucket: String,
-        object: String,
-        data: SegmentedBytes,
-        offset_bytes: u64,
-    ) -> Self {
-        Self {
-            client,
-            bucket,
-            object,
-            offset_bytes,
-            data,
-            ..Default::default()
-        }
-    }
-
-    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
-        self.extra_headers = extra_headers;
-        self
-    }
-
-    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
-        self.extra_query_params = extra_query_params;
-        self
-    }
 }
 
 impl S3Api for AppendObject {
@@ -93,13 +74,16 @@ impl ToS3Request for AppendObject {
         let mut headers: Multimap = self.extra_headers.unwrap_or_default();
         headers.add(X_AMZ_WRITE_OFFSET_BYTES, self.offset_bytes.to_string());
 
-        Ok(S3Request::new(self.client, Method::PUT)
+        Ok(S3Request::builder()
+            .client(self.client)
+            .method(Method::PUT)
             .region(self.region)
-            .bucket(Some(self.bucket))
+            .bucket(self.bucket)
             .query_params(self.extra_query_params.unwrap_or_default())
-            .object(Some(self.object))
+            .object(self.object)
             .headers(headers)
-            .body(Some(self.data)))
+            .body(self.data)
+            .build())
     }
 }
 // endregion: append-object
@@ -113,78 +97,44 @@ impl ToS3Request for AppendObject {
 ///
 /// `AppendObjectContent` consumes an [`ObjectContent`] stream and transparently appends it to an existing object in MinIO or S3,
 /// managing multipart upload details internally.
-#[derive(Default)]
+#[derive(TypedBuilder)]
 pub struct AppendObjectContent {
     client: Client,
 
+    #[builder(default, setter(strip_option))]
     extra_headers: Option<Multimap>,
+
+    #[builder(default, setter(strip_option))]
     extra_query_params: Option<Multimap>,
+
+    #[builder(default, setter(strip_option))]
     region: Option<String>,
+
     bucket: String,
     object: String,
+
+    #[builder(default)]
     sse: Option<Arc<dyn Sse>>,
+
+    #[builder(default = Size::Unknown)]
     part_size: Size,
 
     // source data
     input_content: ObjectContent,
 
     // Computed.
+    #[builder(default = ContentStream::empty())]
     content_stream: ContentStream,
+
+    #[builder(default)]
     part_count: Option<u16>,
 
     /// Value of x-amz-write-offset-bytes
+    #[builder(default)]
     offset_bytes: u64,
 }
 
 impl AppendObjectContent {
-    pub fn new(
-        client: Client,
-        bucket: String,
-        object: String,
-        content: impl Into<ObjectContent>,
-    ) -> Self {
-        Self {
-            client,
-            bucket,
-            object,
-            input_content: content.into(),
-            extra_headers: None,
-            extra_query_params: None,
-            region: None,
-            sse: None,
-            part_size: Size::Unknown,
-            content_stream: ContentStream::empty(),
-            part_count: None,
-            offset_bytes: 0,
-        }
-    }
-
-    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
-        self.extra_headers = extra_headers;
-        self
-    }
-
-    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
-        self.extra_query_params = extra_query_params;
-        self
-    }
-
-    /// Sets the region for the request
-    pub fn region(mut self, region: Option<String>) -> Self {
-        self.region = region;
-        self
-    }
-
-    pub fn part_size(mut self, part_size: impl Into<Size>) -> Self {
-        self.part_size = part_size.into();
-        self
-    }
-
-    pub fn offset_bytes(mut self, offset_bytes: u64) -> Self {
-        self.offset_bytes = offset_bytes;
-        self
-    }
-
     pub async fn send(mut self) -> Result<AppendObjectResponse, Error> {
         check_bucket_name(&self.bucket, true)?;
         check_object_name(&self.object)?;
@@ -247,7 +197,7 @@ impl AppendObjectContent {
                 region: self.region,
                 offset_bytes: current_file_size,
                 sse: self.sse,
-                data: seg_bytes,
+                data: Arc::new(seg_bytes),
             };
             ao.send().await
         } else if object_size.is_known() && (seg_bytes.len() as u64) < part_size {
@@ -312,7 +262,7 @@ impl AppendObjectContent {
                 object: self.object.clone(),
                 region: self.region.clone(),
                 sse: self.sse.clone(),
-                data: part_content,
+                data: Arc::new(part_content),
                 offset_bytes: next_offset_bytes,
             };
             let resp: AppendObjectResponse = append_object.send().await?;

@@ -13,22 +13,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::s3::builders::BucketCommon;
 use crate::s3::error::ValidationErr;
 use crate::s3::response::BucketExistsResponse;
 use crate::s3::types::{S3Api, S3Request, ToS3Request};
 use crate::s3::utils::check_bucket_name;
 use http::Method;
+use typed_builder::TypedBuilder;
+use crate::s3::Client;
+use crate::s3::multimap_ext::Multimap;
 
 /// This struct constructs the parameters required for the [`Client::bucket_exists`](crate::s3::client::Client::bucket_exists) method.
 ///
 /// See [Amazon S3: Working with Buckets](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingBucket.html)
 /// for more information about checking if a bucket exists.
-pub type BucketExists = BucketCommon<BucketExistsPhantomData>;
-
-#[doc(hidden)]
-#[derive(Clone, Debug, Default)]
-pub struct BucketExistsPhantomData;
+#[derive(Clone, Debug, TypedBuilder)]
+pub struct BucketExists {
+    #[builder(!default)] // force required
+    client: Client,
+    #[builder(default, setter(strip_option))]
+    extra_headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
+    extra_query_params: Option<Multimap>,
+    #[builder(default, setter(into))]
+    pub(crate) region: Option<String>,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
+    bucket: String,
+}
 
 impl S3Api for BucketExists {
     type S3Response = BucketExistsResponse;
@@ -38,10 +48,13 @@ impl ToS3Request for BucketExists {
     fn to_s3request(self) -> Result<S3Request, ValidationErr> {
         check_bucket_name(&self.bucket, true)?;
 
-        Ok(S3Request::new(self.client, Method::HEAD)
+        Ok(S3Request::builder()
+            .client(self.client)
+            .method(Method::HEAD)
             .region(self.region)
-            .bucket(Some(self.bucket))
+            .bucket(self.bucket)
             .query_params(self.extra_query_params.unwrap_or_default())
-            .headers(self.extra_headers.unwrap_or_default()))
+            .headers(self.extra_headers.unwrap_or_default())
+            .build())
     }
 }

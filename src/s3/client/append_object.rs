@@ -15,6 +15,7 @@
 
 // ! S3 APIs for appending objects.
 
+use std::sync::Arc;
 use super::Client;
 use crate::s3::builders::ObjectContent;
 use crate::s3::builders::{AppendObject, AppendObjectContent};
@@ -60,13 +61,13 @@ impl Client {
         data: SegmentedBytes,
         offset_bytes: u64,
     ) -> AppendObject {
-        AppendObject::new(
-            self.clone(),
-            bucket.into(),
-            object.into(),
-            data,
-            offset_bytes,
-        )
+        AppendObject::builder()
+            .client(self.clone())
+            .bucket(bucket.into())
+            .object(object.into())
+            .data(Arc::new(data))
+            .offset_bytes(offset_bytes)
+            .build()
     }
 
     /// Creates an [`AppendObjectContent`] request builder to append data to the end of an (existing)
@@ -108,6 +109,11 @@ impl Client {
         object: S2,
         content: C,
     ) -> AppendObjectContent {
-        AppendObjectContent::new(self.clone(), bucket.into(), object.into(), content)
+        AppendObjectContent::builder()
+            .client(self.clone())
+            .bucket(bucket.into())
+            .object(object.into())
+            .input_content(content.into())
+            .build()
     }
 }

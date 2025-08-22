@@ -52,7 +52,12 @@ impl Client {
         object: S2,
         upload_id: S3,
     ) -> UploadPartCopy {
-        UploadPartCopy::new(self.clone(), bucket.into(), object.into(), upload_id.into())
+        UploadPartCopy::builder()
+            .client(self.clone())
+            .bucket(bucket)
+            .object(object)
+            .upload_id(upload_id)
+            .build()
     }
 
     /// Create a CopyObject request builder. This is a lower-level API that
@@ -62,7 +67,11 @@ impl Client {
         bucket: S1,
         object: S2,
     ) -> CopyObjectInternal {
-        CopyObjectInternal::new(self.clone(), bucket.into(), object.into())
+        CopyObjectInternal::builder()
+            .client(self.clone())
+            .bucket(bucket)
+            .object(object)
+            .build()
     }
 
     /// Create a CopyObject request builder.
@@ -97,7 +106,7 @@ impl Client {
     /// let client: Client = Default::default(); // configure your client here
     ///     let resp: CopyObjectResponse = client
     ///         .copy_object("bucket-name-dst", "object-name-dst")
-    ///         .source(CopySource::new("bucket-name-src", "object-name-src").unwrap())
+    ///         .source(CopySource::builder().bucket("bucket-name-src")., "object-name-src").unwrap())
     ///         .send().await.unwrap();
     ///     println!("copied the file from src to dst. New version: {:?}", resp.version_id());
     /// }
@@ -107,7 +116,7 @@ impl Client {
         bucket: S1,
         object: S2,
     ) -> CopyObject {
-        CopyObject::new(self.clone(), bucket.into(), object.into())
+        CopyObject::builder().client(self.clone()).bucket(bucket).object(object).build()
     }
 
     /// Create a ComposeObjectInternal request builder. This is a higher-level API that
@@ -117,7 +126,7 @@ impl Client {
         bucket: S1,
         object: S2,
     ) -> ComposeObjectInternal {
-        ComposeObjectInternal::new(self.clone(), bucket.into(), object.into())
+        ComposeObjectInternal::builder().client(self.clone()).bucket(bucket).object(object).build()
     }
 
     /// compose object is higher-level API that calls an internal compose object, and if that call fails,
@@ -128,6 +137,11 @@ impl Client {
         object: S2,
         sources: Vec<ComposeSource>,
     ) -> ComposeObject {
-        ComposeObject::new(self.clone(), bucket.into(), object.into()).sources(sources)
+        ComposeObject::builder()
+            .client(self.clone())
+            .bucket(bucket)
+            .object(object)
+            .sources(sources)
+            .build()
     }
 }

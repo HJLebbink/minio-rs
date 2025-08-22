@@ -28,64 +28,41 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+use typed_builder::TypedBuilder;
 use xmltree::Element;
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug, TypedBuilder)]
 /// Generic S3Request
 pub struct S3Request {
+
+    //#[builder(!default)] // force required
     pub(crate) client: Client,
 
+    //#[builder(!default)] // force required
     method: Method,
+
+    #[builder(default)]
     region: Option<String>,
+
+    #[builder(default, setter(strip_option))]
     pub(crate) bucket: Option<String>,
+
+    #[builder(default, setter(strip_option))]
     pub(crate) object: Option<String>,
+
+    #[builder(default)]
     pub(crate) query_params: Multimap,
     headers: Multimap,
+
+    #[builder(default, setter(strip_option))]
     body: Option<Arc<SegmentedBytes>>,
 
     /// region computed by [`S3Request::execute`]
+    #[builder(default, setter(skip))]
     pub(crate) inner_region: String,
 }
 
 impl S3Request {
-    pub fn new(client: Client, method: Method) -> Self {
-        Self {
-            client,
-            method,
-            ..Default::default()
-        }
-    }
-
-    /// Sets the region for the request
-    pub fn region(mut self, region: Option<String>) -> Self {
-        self.region = region;
-        self
-    }
-
-    pub fn bucket(mut self, bucket: Option<String>) -> Self {
-        self.bucket = bucket;
-        self
-    }
-
-    pub fn object(mut self, object: Option<String>) -> Self {
-        self.object = object;
-        self
-    }
-
-    pub fn query_params(mut self, query_params: Multimap) -> Self {
-        self.query_params = query_params;
-        self
-    }
-
-    pub fn headers(mut self, headers: Multimap) -> Self {
-        self.headers = headers;
-        self
-    }
-
-    pub fn body(mut self, body: Option<SegmentedBytes>) -> Self {
-        self.body = body.map(Arc::new);
-        self
-    }
 
     async fn compute_inner_region(&self) -> Result<String, Error> {
         Ok(match &self.bucket {

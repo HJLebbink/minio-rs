@@ -25,6 +25,7 @@ use std::io::prelude::*;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
+use typed_builder::TypedBuilder;
 use uuid::Uuid;
 
 use crate::s3::builders::{BucketExists, ComposeSource};
@@ -120,53 +121,23 @@ pub const MAX_OBJECT_SIZE: u64 = 5_497_558_138_880; // 5 TiB
 pub const MAX_MULTIPART_COUNT: u16 = 10_000;
 
 /// Client Builder manufactures a Client using given parameters.
-#[derive(Debug, Default)]
-pub struct ClientBuilder {
+/// Creates a builder given a base URL for the MinIO service or other AWS S3
+/// compatible object storage service.
+#[derive(Debug, TypedBuilder)]
+pub struct ClientBuilderX {
+    #[builder(!default)] // force required
     base_url: BaseUrl,
+    #[builder(default, setter(into, doc = "Set the credential provider. If not, set anonymous access is used."))]
     provider: Option<Arc<dyn Provider + Send + Sync + 'static>>,
+    #[builder(default, setter(into, doc = "Set file for loading CAs certs to trust. This is in addition to the system trust store. The file must contain PEM encoded certificates."))]
     ssl_cert_file: Option<PathBuf>,
+    #[builder(default, setter(into, doc = "Set flag to ignore certificate check. This is insecure and should only be used for testing."))]
     ignore_cert_check: Option<bool>,
+    #[builder(default, setter(into, doc = "Set the app info as an Option of (app_name, app_version) pair. This will show up in the client's user-agent."))]
     app_info: Option<(String, String)>,
 }
 
-impl ClientBuilder {
-    /// Creates a builder given a base URL for the MinIO service or other AWS S3
-    /// compatible object storage service.
-    pub fn new(base_url: BaseUrl) -> Self {
-        Self {
-            base_url,
-            ..Default::default()
-        }
-    }
-
-    /// Set the credential provider. If not, set anonymous access is used.
-    pub fn provider<P: Provider + Send + Sync + 'static>(mut self, provider: Option<P>) -> Self {
-        self.provider = provider.map(|p| Arc::new(p) as Arc<dyn Provider + Send + Sync + 'static>);
-        self
-    }
-
-    /// Set the app info as an Option of (app_name, app_version) pair. This will
-    /// show up in the client's user-agent.
-    pub fn app_info(mut self, app_info: Option<(String, String)>) -> Self {
-        self.app_info = app_info;
-        self
-    }
-
-    /// Set file for loading CAs certs to trust. This is in addition to the system
-    /// trust store. The file must contain PEM encoded certificates.
-    pub fn ssl_cert_file(mut self, ssl_cert_file: Option<&Path>) -> Self {
-        self.ssl_cert_file = ssl_cert_file.map(PathBuf::from);
-        self
-    }
-
-    /// Set flag to ignore certificate check. This is insecure and should only
-    /// be used for testing.
-    pub fn ignore_cert_check(mut self, ignore_cert_check: Option<bool>) -> Self {
-        self.ignore_cert_check = ignore_cert_check;
-        self
-    }
-
-    /// Build the Client.
+impl ClientBuilderX {
     pub fn build(self) -> Result<Client, Error> {
         let mut builder = reqwest::Client::builder().no_gzip();
 
@@ -222,7 +193,8 @@ impl ClientBuilder {
 ///
 /// If credential provider is passed, all S3 operation requests are signed using
 /// AWS Signature Version 4; else they are performed anonymously.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug, TypedBuilder)]
+#[builder(build_fn(skip))] // <- do not generate build()
 pub struct Client {
     http_client: reqwest::Client,
     pub(crate) shared: Arc<SharedClientItems>,
@@ -252,7 +224,8 @@ impl Client {
         ssl_cert_file: Option<&Path>,
         ignore_cert_check: Option<bool>,
     ) -> Result<Self, Error> {
-        ClientBuilder::new(base_url)
+        ClientBuilder::builder()
+            .base_url(base_url)
             .provider(provider)
             .ssl_cert_file(ssl_cert_file)
             .ignore_cert_check(ignore_cert_check)
@@ -274,10 +247,12 @@ impl Client {
         if let Some(val) = self.shared.express.get() {
             *val
         } else {
-            // Create a random bucket name
-            let bucket_name: String = Uuid::new_v4().to_string();
+            let be = BucketExists::builder()
+                .client(self.clone())
+                .bucket(Uuid::new_v4().to_string())
+                .build();
 
-            let express = match BucketExists::new(self.clone(), bucket_name).send().await {
+            let express = match be.send().await {
                 Ok(v) => {
                     if let Some(server) = v.headers().get("server") {
                         if let Ok(s) = server.to_str() {
@@ -299,6 +274,7 @@ impl Client {
             express
         }
     }
+
     /// Add a bucket-region pair to the region cache if it does not exist.
     pub(crate) fn add_bucket_region(&mut self, bucket: &str, region: impl Into<String>) {
         self.shared

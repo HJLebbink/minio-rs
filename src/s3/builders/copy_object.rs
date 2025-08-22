@@ -34,61 +34,31 @@ use async_recursion::async_recursion;
 use http::Method;
 use std::collections::HashMap;
 use std::sync::Arc;
+use typed_builder::TypedBuilder;
 
 /// Argument builder for the [`UploadPartCopy`](https://docs.aws.amazon.com/AmazonS3/latest/API/API_UploadPartCopy.html) S3 API operation.
 ///
 /// This struct constructs the parameters required for the [`Client::upload_part_copy`](crate::s3::client::Client::upload_part_copy) method.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct UploadPartCopy {
+    #[builder(!default)] // force required
     client: Client,
-
+    #[builder(default, setter(strip_option))]
     extra_headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     extra_query_params: Option<Multimap>,
+    #[builder(default, setter(into))]
     region: Option<String>,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     bucket: String,
-
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     object: String,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     upload_id: String,
+    #[builder(default=0)]
     part_number: u16,
+    #[builder(default)]
     headers: Multimap,
-}
-
-impl UploadPartCopy {
-    pub fn new(client: Client, bucket: String, object: String, upload_id: String) -> Self {
-        Self {
-            client,
-            bucket,
-            object,
-            upload_id,
-            ..Default::default()
-        }
-    }
-
-    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
-        self.extra_headers = extra_headers;
-        self
-    }
-
-    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
-        self.extra_query_params = extra_query_params;
-        self
-    }
-
-    /// Sets the region for the request
-    pub fn region(mut self, region: Option<String>) -> Self {
-        self.region = region;
-        self
-    }
-
-    pub fn part_number(mut self, part_number: u16) -> Self {
-        self.part_number = part_number;
-        self
-    }
-
-    pub fn headers(mut self, headers: Multimap) -> Self {
-        self.headers = headers;
-        self
-    }
 }
 
 impl S3Api for UploadPartCopy {
@@ -121,107 +91,50 @@ impl ToS3Request for UploadPartCopy {
             query_params.add("uploadId", self.upload_id);
         }
 
-        Ok(S3Request::new(self.client, Method::PUT)
+        Ok(S3Request::builder()
+            .client(self.client)
+            .method(Method::PUT)
             .region(self.region)
-            .bucket(Some(self.bucket))
-            .object(Some(self.object))
+            .bucket(self.bucket)
+            .object(self.object)
             .query_params(query_params)
-            .headers(headers))
+            .headers(headers)
+            .build())
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct CopyObjectInternal {
+    #[builder(!default)] // force required
     client: Client,
-
+    #[builder(default, setter(strip_option))]
     extra_headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     extra_query_params: Option<Multimap>,
-    region: Option<String>,
+    #[builder(default, setter(strip_option))]
+    pub(crate) region: Option<String>,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     bucket: String,
-
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     object: String,
+    #[builder(default)]
     headers: Multimap,
+    #[builder(default, setter(strip_option))]
     user_metadata: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     sse: Option<Arc<dyn Sse>>,
+    #[builder(default, setter(strip_option))]
     tags: Option<HashMap<String, String>>,
+    #[builder(default, setter(strip_option))]
     retention: Option<Retention>,
+    #[builder(default)]
     legal_hold: bool,
+    #[builder(!default)] // force required
     source: CopySource,
-
+    #[builder(default, setter(strip_option))]
     metadata_directive: Option<Directive>,
+    #[builder(default, setter(strip_option))]
     tagging_directive: Option<Directive>,
-}
-
-impl CopyObjectInternal {
-    pub fn new(client: Client, bucket: String, object: String) -> Self {
-        Self {
-            client,
-            bucket,
-            object,
-            ..Default::default()
-        }
-    }
-
-    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
-        self.extra_headers = extra_headers;
-        self
-    }
-
-    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
-        self.extra_query_params = extra_query_params;
-        self
-    }
-
-    /// Sets the region for the request
-    pub fn region(mut self, region: Option<String>) -> Self {
-        self.region = region;
-        self
-    }
-
-    pub fn headers(mut self, headers: Multimap) -> Self {
-        self.headers = headers;
-        self
-    }
-
-    pub fn user_metadata(mut self, user_metadata: Option<Multimap>) -> Self {
-        self.user_metadata = user_metadata;
-        self
-    }
-
-    pub fn sse(mut self, sse: Option<Arc<dyn Sse>>) -> Self {
-        self.sse = sse;
-        self
-    }
-
-    pub fn tags(mut self, tags: Option<HashMap<String, String>>) -> Self {
-        self.tags = tags;
-        self
-    }
-
-    pub fn retention(mut self, retention: Option<Retention>) -> Self {
-        self.retention = retention;
-        self
-    }
-
-    pub fn legal_hold(mut self, legal_hold: bool) -> Self {
-        self.legal_hold = legal_hold;
-        self
-    }
-
-    pub fn source(mut self, source: CopySource) -> Self {
-        self.source = source;
-        self
-    }
-
-    pub fn metadata_directive(mut self, metadata_directive: Option<Directive>) -> Self {
-        self.metadata_directive = metadata_directive;
-        self
-    }
-
-    pub fn tagging_directive(mut self, tagging_directive: Option<Directive>) -> Self {
-        self.tagging_directive = tagging_directive;
-        self
-    }
 }
 
 impl S3Api for CopyObjectInternal {
@@ -314,104 +227,56 @@ impl ToS3Request for CopyObjectInternal {
             }
         };
 
-        Ok(S3Request::new(self.client, Method::PUT)
+        Ok(S3Request::builder()
+            .client(self.client)
+            .method(Method::PUT)
             .region(self.region)
-            .bucket(Some(self.bucket))
-            .object(Some(self.object))
+            .bucket(self.bucket)
+            .object(self.object)
             .query_params(self.extra_query_params.unwrap_or_default())
-            .headers(headers))
+            .headers(headers)
+            .build())
     }
 }
 
 /// Argument builder for [`CopyObject`](https://docs.aws.amazon.com/AmazonS3/latest/API/API_CopyObject.html) S3 API operation.
 ///
 /// This struct constructs the parameters required for the [`Client::copy_object`](crate::s3::client::Client::copy_object) method.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct CopyObject {
+    #[builder(!default)] // force required
     client: Client,
-
+    #[builder(default, setter(into))]
     extra_headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     extra_query_params: Option<Multimap>,
-    region: Option<String>,
+    #[builder(default, setter(strip_option))]
+    pub(crate) region: Option<String>,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     bucket: String,
-
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     object: String,
+    #[builder(default, setter(strip_option))]
     headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     user_metadata: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     sse: Option<Arc<dyn Sse>>,
+    #[builder(default, setter(strip_option))]
     tags: Option<HashMap<String, String>>,
+    #[builder(default, setter(strip_option))]
     retention: Option<Retention>,
+    #[builder(default=false)]
     legal_hold: bool,
+    #[builder(!default)] // force required
     source: CopySource,
+    #[builder(default, setter(strip_option))]
     metadata_directive: Option<Directive>,
+    #[builder(default, setter(strip_option))]
     tagging_directive: Option<Directive>,
 }
 
 impl CopyObject {
-    pub fn new(client: Client, bucket: String, object: String) -> Self {
-        Self {
-            client,
-            bucket,
-            object,
-            ..Default::default()
-        }
-    }
-
-    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
-        self.extra_headers = extra_headers;
-        self
-    }
-
-    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
-        self.extra_query_params = extra_query_params;
-        self
-    }
-
-    /// Sets the region for the request
-    pub fn region(mut self, region: Option<String>) -> Self {
-        self.region = region;
-        self
-    }
-
-    pub fn headers(mut self, headers: Option<Multimap>) -> Self {
-        self.headers = headers;
-        self
-    }
-
-    pub fn user_metadata(mut self, user_metadata: Option<Multimap>) -> Self {
-        self.user_metadata = user_metadata;
-        self
-    }
-    pub fn sse(mut self, sse: Option<Arc<dyn Sse>>) -> Self {
-        self.sse = sse;
-        self
-    }
-    pub fn tags(mut self, tags: Option<HashMap<String, String>>) -> Self {
-        self.tags = tags;
-        self
-    }
-    pub fn retention(mut self, retention: Option<Retention>) -> Self {
-        self.retention = retention;
-        self
-    }
-    pub fn legal_hold(mut self, legal_hold: bool) -> Self {
-        self.legal_hold = legal_hold;
-        self
-    }
-
-    /// Sets the source for the copy operation.
-    pub fn source(mut self, source: CopySource) -> Self {
-        self.source = source;
-        self
-    }
-    pub fn metadata_directive(mut self, metadata_directive: Option<Directive>) -> Self {
-        self.metadata_directive = metadata_directive;
-        self
-    }
-    pub fn tagging_directive(mut self, tagging_directive: Option<Directive>) -> Self {
-        self.tagging_directive = tagging_directive;
-        self
-    }
 
     /// Sends the copy object request.
     ///
@@ -520,85 +385,37 @@ impl CopyObject {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct ComposeObjectInternal {
+    #[builder(!default)] // force required
     client: Client,
-
+    #[builder(default, setter(strip_option))]
     extra_headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     extra_query_params: Option<Multimap>,
-    region: Option<String>,
+    #[builder(default, setter(into))]
+    pub(crate) region: Option<String>,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     bucket: String,
-
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     object: String,
+    #[builder(default, setter(strip_option))]
     headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     user_metadata: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     sse: Option<Arc<dyn Sse>>,
+    #[builder(default, setter(strip_option))]
     tags: Option<HashMap<String, String>>,
+    #[builder(default, setter(strip_option))]
     retention: Option<Retention>,
+    #[builder(default)]
     legal_hold: bool,
+    #[builder(default)]
     sources: Vec<ComposeSource>,
 }
 
 impl ComposeObjectInternal {
-    pub fn new(client: Client, bucket: String, object: String) -> Self {
-        Self {
-            client,
-            bucket,
-            object,
-            ..Default::default()
-        }
-    }
-
-    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
-        self.extra_headers = extra_headers;
-        self
-    }
-
-    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
-        self.extra_query_params = extra_query_params;
-        self
-    }
-
-    /// Sets the region for the request
-    pub fn region(mut self, region: Option<String>) -> Self {
-        self.region = region;
-        self
-    }
-
-    pub fn headers(mut self, headers: Option<Multimap>) -> Self {
-        self.headers = headers;
-        self
-    }
-
-    pub fn user_metadata(mut self, user_metadata: Option<Multimap>) -> Self {
-        self.user_metadata = user_metadata;
-        self
-    }
-
-    pub fn sse(mut self, sse: Option<Arc<dyn Sse>>) -> Self {
-        self.sse = sse;
-        self
-    }
-
-    pub fn tags(mut self, tags: Option<HashMap<String, String>>) -> Self {
-        self.tags = tags;
-        self
-    }
-
-    pub fn retention(mut self, retention: Option<Retention>) -> Self {
-        self.retention = retention;
-        self
-    }
-
-    pub fn legal_hold(mut self, legal_hold: bool) -> Self {
-        self.legal_hold = legal_hold;
-        self
-    }
-
-    pub fn sources(mut self, sources: Vec<ComposeSource>) -> Self {
-        self.sources = sources;
-        self
-    }
 
     #[async_recursion]
     pub async fn send(self) -> (Result<ComposeObjectResponse, Error>, String) {
@@ -799,85 +616,37 @@ impl ComposeObjectInternal {
 ///
 /// See [Amazon S3 Multipart Upload](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html)
 /// This struct constructs the parameters required for the [`Client::copy_object`](crate::s3::client::Client::copy_object) method.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct ComposeObject {
+    #[builder(!default)] // force required
     client: Client,
-
+    #[builder(default, setter(into))]
     extra_headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     extra_query_params: Option<Multimap>,
+    #[builder(default, setter(into))]
     region: Option<String>,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     bucket: String,
-
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     object: String,
+    #[builder(default, setter(strip_option))]
     headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     user_metadata: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     sse: Option<Arc<dyn Sse>>,
+    #[builder(default, setter(strip_option))]
     tags: Option<HashMap<String, String>>,
+    #[builder(default, setter(strip_option))]
     retention: Option<Retention>,
+    #[builder(default)]
     legal_hold: bool,
-    sources: Vec<ComposeSource>,
+    #[builder(default)]
+    sources: Vec<ComposeSource>
 }
 
 impl ComposeObject {
-    pub fn new(client: Client, bucket: String, object: String) -> Self {
-        Self {
-            client,
-            bucket,
-            object,
-            ..Default::default()
-        }
-    }
-
-    pub fn extra_headers(mut self, extra_headers: Option<Multimap>) -> Self {
-        self.extra_headers = extra_headers;
-        self
-    }
-
-    pub fn extra_query_params(mut self, extra_query_params: Option<Multimap>) -> Self {
-        self.extra_query_params = extra_query_params;
-        self
-    }
-
-    /// Sets the region for the request
-    pub fn region(mut self, region: Option<String>) -> Self {
-        self.region = region;
-        self
-    }
-
-    pub fn headers(mut self, headers: Option<Multimap>) -> Self {
-        self.headers = headers;
-        self
-    }
-
-    pub fn user_metadata(mut self, user_metadata: Option<Multimap>) -> Self {
-        self.user_metadata = user_metadata;
-        self
-    }
-
-    pub fn sse(mut self, sse: Option<Arc<dyn Sse>>) -> Self {
-        self.sse = sse;
-        self
-    }
-
-    pub fn tags(mut self, tags: Option<HashMap<String, String>>) -> Self {
-        self.tags = tags;
-        self
-    }
-
-    pub fn retention(mut self, retention: Option<Retention>) -> Self {
-        self.retention = retention;
-        self
-    }
-
-    pub fn legal_hold(mut self, legal_hold: bool) -> Self {
-        self.legal_hold = legal_hold;
-        self
-    }
-
-    pub fn sources(mut self, sources: Vec<ComposeSource>) -> Self {
-        self.sources = sources;
-        self
-    }
 
     pub async fn send(self) -> Result<ComposeObjectResponse, Error> {
         check_sse(&self.sse, &self.client)?;
@@ -1050,35 +819,38 @@ impl ComposeSource {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, TypedBuilder)]
 /// Base argument for object conditional read APIs
 pub struct CopySource {
+    #[builder(default, setter(strip_option))]
     pub extra_headers: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     pub extra_query_params: Option<Multimap>,
+    #[builder(default, setter(strip_option))]
     pub region: Option<String>,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     pub bucket: String,
+    #[builder(!default, setter(into))] // force required + accept Into<String>
     pub object: String,
+    #[builder(default, setter(strip_option))]
     pub version_id: Option<String>,
+    #[builder(default, setter(strip_option))]
     pub ssec: Option<SseCustomerKey>,
+    #[builder(default, setter(strip_option))]
     pub offset: Option<u64>,
+    #[builder(default, setter(strip_option))]
     pub length: Option<u64>,
+    #[builder(default, setter(strip_option))]
     pub match_etag: Option<String>,
+    #[builder(default, setter(strip_option))]
     pub not_match_etag: Option<String>,
+    #[builder(default, setter(strip_option))]
     pub modified_since: Option<UtcTime>,
+    #[builder(default, setter(strip_option))]
     pub unmodified_since: Option<UtcTime>,
 }
 
 impl CopySource {
-    pub fn new(bucket_name: &str, object_name: &str) -> Result<Self, ValidationErr> {
-        check_bucket_name(bucket_name, true)?;
-        check_object_name(object_name)?;
-
-        Ok(Self {
-            bucket: bucket_name.to_owned(),
-            object: object_name.to_owned(),
-            ..Default::default()
-        })
-    }
 
     fn get_range_value(&self) -> String {
         let (offset, length) = match self.length {

@@ -13,11 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! HTTP URL definitions
-
 use super::utils::urlencode_object_key;
 use crate::s3::client::DEFAULT_REGION;
-
 use crate::s3::error::ValidationErr;
 use crate::s3::multimap_ext::{Multimap, MultimapExt};
 use crate::s3::utils::match_hostname;
@@ -36,7 +33,7 @@ lazy_static! {
     static ref AWS_S3_PREFIX_REGEX: Regex = Regex::new(AWS_S3_PREFIX).unwrap();
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 /// Represents HTTP URL
 pub struct Url {
     pub https: bool,
@@ -55,18 +52,6 @@ impl Url {
     }
 }
 
-impl Default for Url {
-    fn default() -> Self {
-        Self {
-            https: true,
-            host: String::default(),
-            port: u16::default(),
-            path: String::default(),
-            query: Multimap::default(),
-        }
-    }
-}
-
 impl fmt::Display for Url {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.host.is_empty() {
@@ -80,7 +65,7 @@ impl fmt::Display for Url {
         }
 
         if self.port > 0 {
-            f.write_str(format!("{}:{}", self.host, self.port).as_str())?;
+            f.write_str(&format!("{}:{}", self.host, self.port))?;
         } else {
             f.write_str(&self.host)?;
         }

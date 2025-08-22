@@ -38,6 +38,11 @@ async fn list_buckets(ctx: TestContext) {
     for bucket in resp.buckets().unwrap().iter() {
         if names.contains(&bucket.name) {
             count += 1;
+        } else if bucket.name.starts_with("test-bucket-") {
+            match ctx.client.delete_and_purge_bucket(&bucket.name).await {
+                Ok(_) => println!("Deleted bucket: {}", bucket.name),
+                Err(e) => println!("Failed to delete bucket {}: {}", bucket.name, e),
+            }
         }
     }
     assert_eq!(guards.len(), N_BUCKETS);
