@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use crate::s3::client::MinioClient;
-use crate::s3::error::{Error, ValidationErr};
+use crate::s3::error::ValidationErr;
 use crate::s3::multimap_ext::Multimap;
 use crate::s3::response::ListBucketsResponse;
 use crate::s3::types::{S3Api, S3Request, ToS3Request};

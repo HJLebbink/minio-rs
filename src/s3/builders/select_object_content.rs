@@ -85,6 +85,7 @@ impl ToS3Request for SelectObjectContent {
 
         let mut query_params: Multimap = insert(self.extra_query_params, "select");
         query_params.add("select-type", "2");
+        query_params.add_version(self.version_id);
 
         let body = Arc::new(SegmentedBytes::from(bytes));
 

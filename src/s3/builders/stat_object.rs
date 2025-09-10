@@ -48,10 +48,6 @@ pub struct StatObject {
     #[builder(default, setter(into))]
     version_id: Option<String>,
     #[builder(default, setter(into))]
-    offset: Option<u64>,
-    #[builder(default, setter(into))]
-    length: Option<u64>,
-    #[builder(default, setter(into))]
     region: Option<String>,
     #[builder(default, setter(into))]
     ssec: Option<SseCustomerKey>,
@@ -73,8 +69,6 @@ pub type StatObjectBldr = StatObjectBuilder<(
     (),
     (String,),
     (String,),
-    (),
-    (),
     (),
     (),
     (),

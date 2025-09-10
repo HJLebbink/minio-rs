@@ -18,7 +18,6 @@ use log::info;
 use minio::s3::response::BucketExistsResponse;
 use minio::s3::types::S3Api;
 use minio::s3::{MinioClient, MinioClientBuilder, builders::ObjectContent, creds::StaticProvider};
-use reqwest::ClientBuilder;
 use std::path::PathBuf;
 
 /// Upload a file to the given bucket and object path on the MinIO Play server.
