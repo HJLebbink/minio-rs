@@ -101,6 +101,18 @@ name = "append_object"
 [[example]]
 name = "load_balancing_with_hooks"
 
+[[example]]
+name = "s3vectors_recall"
+path = "examples/s3vectors/s3vectors_recall.rs"
+
+[[example]]
+name = "s3vectors_param_sweep"
+path = "examples/s3vectors/s3vectors_param_sweep.rs"
+
+[[example]]
+name = "s3vectors_speed"
+path = "examples/s3vectors/s3vectors_speed.rs"
+
 [[bench]]
 name = "s3-api"
 path = "benches/s3/api_benchmarks.rs"

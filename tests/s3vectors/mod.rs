@@ -13,6 +13,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Integration test entry point for all tests
-mod s3;
-mod s3vectors;
+//! S3Vectors API Integration Tests
+
+// Vector bucket operations
+mod vector_bucket;
+
+// Vector index operations
+mod index;
+
+// Vector data operations (put, query, get, list, delete)
+mod vectors;
+
+// Bucket policy operations
+mod bucket_policy;
+
+// Tagging operations
+mod tagging;

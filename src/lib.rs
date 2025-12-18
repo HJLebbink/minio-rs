@@ -63,6 +63,7 @@
 #![allow(clippy::result_large_err)]
 #![allow(clippy::too_many_arguments)]
 pub mod s3;
+pub mod s3vectors;
 
 #[cfg(test)]
 #[macro_use]

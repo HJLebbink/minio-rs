@@ -350,6 +350,9 @@ pub enum ValidationErr {
 
     #[error("Invalid ARN: {0}")]
     InvalidArn(String),
+
+    #[error("S3Vectors validation error: {0}")]
+    VectorsValidation(#[from] crate::s3vectors::error::VectorsValidationErr),
 }
 
 impl From<reqwest::header::ToStrError> for ValidationErr {
@@ -437,7 +440,7 @@ pub enum Error {
     #[error("Network error occurred")]
     Network(#[from] NetworkError),
 
-    #[error("Validation error occurred")]
+    #[error("Validation: {0}")]
     Validation(#[from] ValidationErr),
 }
 

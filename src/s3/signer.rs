@@ -346,6 +346,36 @@ pub(crate) fn sign_v4_s3(
     )
 }
 
+/// Signs and updates headers for the given S3 Vectors request using AWS SigV4.
+///
+/// The `cache` parameter should be the per-client `signing_key_cache` from `SharedClientItems`.
+pub(crate) fn sign_v4_s3_vectors(
+    cache: &RwLock<SigningKeyCache>,
+    method: &Method,
+    uri: &str,
+    region: &Region,
+    headers: &mut Multimap,
+    query_params: &Multimap,
+    access_key: &str,
+    secret_key: &str,
+    content_sha256: &str,
+    date: UtcTime,
+) {
+    sign_v4(
+        cache,
+        "s3vectors",
+        method,
+        uri,
+        region,
+        headers,
+        query_params,
+        access_key,
+        secret_key,
+        content_sha256,
+        date,
+    )
+}
+
 /// Signs and updates query parameters for the given presigned request.
 ///
 /// The `cache` parameter should be the per-client `signing_key_cache` from `SharedClientItems`.

@@ -13,6 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Integration test entry point for all tests
-mod s3;
-mod s3vectors;
+//! Response for TagResource operation.
+
+use crate::s3vectors::types::VectorsRequest;
+use crate::{impl_from_vectors_response, impl_has_vectors_fields};
+use bytes::Bytes;
+use http::HeaderMap;
+
+/// Response from the TagResource operation.
+#[derive(Debug, Clone)]
+pub struct TagResourceResponse {
+    request: VectorsRequest,
+    headers: HeaderMap,
+    body: Bytes,
+}
+
+impl_from_vectors_response!(TagResourceResponse);
+impl_has_vectors_fields!(TagResourceResponse);

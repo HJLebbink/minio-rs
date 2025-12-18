@@ -13,6 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Integration test entry point for all tests
-mod s3;
-mod s3vectors;
+//! Response for PutVectorBucketPolicy operation.
+
+use crate::s3vectors::types::VectorsRequest;
+use crate::{impl_from_vectors_response, impl_has_vectors_fields};
+use bytes::Bytes;
+use http::HeaderMap;
+
+/// Response from the PutVectorBucketPolicy operation.
+#[derive(Debug, Clone)]
+pub struct PutVectorBucketPolicyResponse {
+    request: VectorsRequest,
+    headers: HeaderMap,
+    body: Bytes,
+}
+
+impl_from_vectors_response!(PutVectorBucketPolicyResponse);
+impl_has_vectors_fields!(PutVectorBucketPolicyResponse);
