@@ -111,6 +111,7 @@ mod put_table_expiration;
 
 // Scan planning operations
 mod cancel_planning;
+mod execute_table_scan;
 mod fetch_planning_result;
 mod fetch_scan_tasks;
 mod plan_table_scan;

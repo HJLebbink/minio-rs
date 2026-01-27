@@ -312,6 +312,9 @@ pub enum ValidationErr {
     #[error("Invalid content type: {0}")]
     InvalidContentType(String),
 
+    #[error("Invalid SIMD mode: {0}")]
+    InvalidSimdMode(String),
+
     #[error("Invalid access key: {0}")]
     InvalidAccessKey(String),
 

@@ -93,6 +93,9 @@ pub mod utils;
 pub mod variant;
 pub mod wkb;
 
+#[cfg(feature = "datafusion")]
+pub mod datafusion;
+
 // Re-export types module contents for convenience
 pub use client::{DEFAULT_BASE_PATH, TablesClient, TablesClientBuilder, base_paths};
 pub use response_traits::{

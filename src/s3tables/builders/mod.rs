@@ -202,11 +202,13 @@ pub use put_table_expiration::{PutTableExpiration, PutTableExpirationBldr};
 
 // Scan planning operations
 mod cancel_planning;
+mod execute_table_scan;
 mod fetch_planning_result;
 mod fetch_scan_tasks;
 mod plan_table_scan;
 
 pub use cancel_planning::{CancelPlanning, CancelPlanningBldr};
+pub use execute_table_scan::{ExecuteTableScan, ExecuteTableScanBldr, OutputFormat};
 pub use fetch_planning_result::{FetchPlanningResult, FetchPlanningResultBldr};
 pub use fetch_scan_tasks::{FetchScanTasks, FetchScanTasksBldr};
 pub use plan_table_scan::{PlanTableScan, PlanTableScanBldr};

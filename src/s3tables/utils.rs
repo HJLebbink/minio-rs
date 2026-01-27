@@ -729,6 +729,75 @@ impl From<PageSize> for i32 {
     }
 }
 
+/// SIMD implementation mode for server-side string filtering.
+///
+/// Controls which SIMD implementation the server uses for operations like
+/// ILIKE pattern matching. This is primarily used for benchmarking to compare
+/// performance across different CPU instruction sets.
+///
+/// # Server Support
+///
+/// The server must support the `X-MinIO-SIMD-Mode` header. If the header is not
+/// recognized or the requested mode is not available, the server will use its
+/// default implementation.
+///
+/// # Example
+///
+/// ```
+/// use minio::s3tables::utils::SimdMode;
+///
+/// let mode = SimdMode::Avx512;
+///
+/// // Parse from string
+/// let mode: SimdMode = "avx512".parse().unwrap();
+/// assert_eq!(mode, SimdMode::Avx512);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum SimdMode {
+    /// Use the server's default SIMD implementation (auto-detect)
+    #[default]
+    Auto,
+    /// Use generic (non-SIMD) implementation
+    Generic,
+    /// Use AVX-512 SIMD implementation (512-bit vectors)
+    Avx512,
+}
+
+impl SimdMode {
+    /// Returns the header value string for this SIMD mode.
+    #[inline]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SimdMode::Auto => "auto",
+            SimdMode::Generic => "generic",
+            SimdMode::Avx512 => "avx512",
+        }
+    }
+}
+
+impl fmt::Display for SimdMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for SimdMode {
+    type Err = S3TablesValidationErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "auto" | "" => Ok(SimdMode::Auto),
+            "generic" | "none" | "scalar" => Ok(SimdMode::Generic),
+            "avx512" | "avx-512" => Ok(SimdMode::Avx512),
+            _ => Err(S3TablesValidationErr::with_value(
+                "simd_mode",
+                s,
+                "expected: auto, generic, avx512",
+            )),
+        }
+    }
+}
+
 /// A validated metadata location URI for Iceberg tables.
 ///
 /// Metadata locations are S3 URIs pointing to the table's metadata.json file.

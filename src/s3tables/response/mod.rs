@@ -191,11 +191,13 @@ pub use put_table_expiration::PutTableExpirationResponse;
 
 // Scan planning operations
 mod cancel_planning;
+mod execute_table_scan;
 mod fetch_planning_result;
 mod fetch_scan_tasks;
 pub mod plan_table_scan;
 
 pub use cancel_planning::CancelPlanningResponse;
+pub use execute_table_scan::ExecuteTableScanResponse;
 pub use fetch_planning_result::{FetchPlanningResultData, FetchPlanningResultResponse};
 pub use fetch_scan_tasks::{FetchScanTasksResponse, FetchScanTasksResult};
 pub use plan_table_scan::{

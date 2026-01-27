@@ -31,6 +31,12 @@ use typed_builder::TypedBuilder;
 /// Argument builder for DropView operation
 ///
 /// Deletes a view from the catalog.
+///
+/// # Purge behavior
+///
+/// MinIO always purges the underlying metadata files when dropping a view, deviating
+/// from the Iceberg REST spec. There is no `purgeRequested` parameter for views.
+/// After a drop, the metadata location is no longer valid for `register_view`.
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct DropView {
     #[builder(!default)]

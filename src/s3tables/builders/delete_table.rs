@@ -32,6 +32,15 @@ use typed_builder::TypedBuilder;
 ///
 /// Drops a table from the catalog.
 ///
+/// # Purge behavior
+///
+/// The Iceberg REST spec defaults `purgeRequested` to `false` (catalog-only delete,
+/// preserving underlying data and metadata files). However, MinIO defaults to `true`
+/// for Spark compatibility when the parameter is omitted. To avoid silent data loss,
+/// this builder defaults to sending `purgeRequested=false` explicitly.
+///
+/// Use `.purge_requested(true)` to purge all underlying data and metadata files.
+///
 /// # Example
 ///
 /// ```no_run
@@ -63,8 +72,12 @@ pub struct DeleteTable {
     namespace: Namespace,
     #[builder(!default)]
     table: TableName,
-    /// Whether to purge the underlying data files (default: false)
-    #[builder(default, setter(into, strip_option))]
+    /// Whether to purge the underlying data files.
+    ///
+    /// Defaults to `false` (catalog-only delete). MinIO's server defaults to `true` when
+    /// this parameter is omitted, so the SDK sends `false` explicitly to match the Iceberg
+    /// REST spec and prevent silent data loss.
+    #[builder(default = Some(false), setter(into, strip_option))]
     purge_requested: Option<bool>,
     /// Idempotency key for safe request retries (UUID format)
     #[builder(default, setter(into, strip_option))]

@@ -5,3 +5,6 @@ Cargo.lock
 *.env
 .cargo
 /nul
+
+# Stress test output files
+tables_sustained_load.csv

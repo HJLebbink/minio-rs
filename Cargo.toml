@@ -10,6 +10,9 @@ readme = "README.md"
 keywords = ["object-storage", "minio", "s3"]
 categories = ["api-bindings", "web-programming::http-client"]
 
+[package.metadata.docs.rs]
+features = ["datafusion", "puffin-compression"]
+
 [features]
 default = ["default-tls", "default-crypto", "http2"]
 default-tls = ["reqwest/default-tls"]
@@ -24,6 +27,8 @@ http2 = ["reqwest/http2"]
 localhost = []
 # Puffin compression support for Iceberg table compression
 puffin-compression = ["dep:zstd", "dep:lz4_flex"]
+# DataFusion integration for query pushdown support
+datafusion = ["dep:datafusion", "dep:arrow", "dep:parquet", "dep:object_store", "dep:tokio"]
 
 [workspace.dependencies]
 uuid = "1.19"
@@ -74,10 +79,16 @@ xmltree = "0.12"
 http = { workspace = true }
 thiserror = "2.0"
 typed-builder = "0.23"
+# DataFusion integration (optional, for query pushdown)
+datafusion = { version = "51.0", optional = true }
+arrow = { version = "57.1", optional = true }
+parquet = { version = "57.1", features = ["snap"], optional = true }
+object_store = { version = "0.12", optional = true }
 tokio = { workspace = true, optional = true, features = ["rt-multi-thread"] }
 # Puffin compression (optional, for Iceberg table compression)
 zstd = { version = "0.13", optional = true }
 lz4_flex = { version = "0.11", optional = true }
+plotters = "0.3.7"
 
 [dev-dependencies]
 minio-common = { path = "./common" }
@@ -88,6 +99,9 @@ clap = { version = "4.5", features = ["derive"] }
 rand = { workspace = true, features = ["small_rng"] }
 quickcheck = "1.0"
 criterion = "0.8"
+# DataFusion benchmark dependencies (also available as optional feature)
+object_store = { version = "0.12", features = ["aws"] }
+futures = "0.3"
 # Iceberg-rust for proper manifest file creation in benchmarks
 iceberg = { version = "0.7", features = ["storage-s3"] }
 iceberg-catalog-rest = "0.7"
@@ -119,6 +133,41 @@ name = "load_balancing_with_hooks"
 [[example]]
 name = "tables_quickstart"
 path = "examples/s3tables/tables_quickstart.rs"
+
+[[example]]
+name = "tables_stress_throughput_saturation"
+path = "examples/s3tables/tables_stress_throughput_saturation.rs"
+
+[[example]]
+name = "tables_stress_sustained_load"
+path = "examples/s3tables/tables_stress_sustained_load.rs"
+
+[[example]]
+name = "tables_stress_state_chaos"
+path = "examples/s3tables/tables_stress_state_chaos.rs"
+
+[[example]]
+name = "sdk_comparison_benchmark"
+path = "examples/datafusion/sdk_comparison_benchmark.rs"
+required-features = ["datafusion"]
+
+[[example]]
+name = "s3tables_pushdown_benchmark"
+path = "examples/datafusion/s3tables_pushdown_benchmark.rs"
+required-features = ["datafusion"]
+
+[[example]]
+name = "simd_benchmark"
+path = "examples/s3tables/simd_benchmark.rs"
+
+[[example]]
+name = "simd_benchmark_full"
+path = "examples/s3tables/simd_benchmark_full.rs"
+required-features = ["datafusion"]
+
+[[example]]
+name = "storage_pushdown_benchmark"
+path = "examples/s3tables/storage_pushdown_benchmark.rs"
 
 [[example]]
 name = "deletion_benchmark"

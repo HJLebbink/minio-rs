@@ -19,10 +19,12 @@
 //! Spec: <https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml>
 
 use crate::s3::error::ValidationErr;
+use crate::s3::header_constants::X_MINIO_SIMD_MODE;
+use crate::s3::multimap_ext::{Multimap, MultimapExt};
 use crate::s3tables::client::TablesClient;
 use crate::s3tables::response::PlanTableScanResponse;
 use crate::s3tables::types::{TablesApi, TablesRequest, ToTablesRequest};
-use crate::s3tables::utils::{Namespace, TableName, WarehouseName, encode_namespace};
+use crate::s3tables::utils::{Namespace, SimdMode, TableName, WarehouseName, encode_namespace};
 use http::Method;
 use serde::Serialize;
 use typed_builder::TypedBuilder;
@@ -61,6 +63,9 @@ pub struct PlanTableScan {
     /// End snapshot ID for incremental scans
     #[builder(default, setter(into, strip_option))]
     end_snapshot_id: Option<i64>,
+    /// SIMD mode for server-side string filtering (for benchmarking)
+    #[builder(default, setter(strip_option))]
+    simd_mode: Option<SimdMode>,
 }
 
 impl TablesApi for PlanTableScan {
@@ -73,6 +78,7 @@ pub type PlanTableScanBldr = PlanTableScanBuilder<(
     (WarehouseName,),
     (Namespace,),
     (TableName,),
+    (),
     (),
     (),
     (),
@@ -117,6 +123,14 @@ impl ToTablesRequest for PlanTableScan {
 
         let body = serde_json::to_vec(&request).map_err(ValidationErr::JsonError)?;
 
+        // Add SIMD mode header if specified (for benchmarking different implementations)
+        let mut headers = Multimap::new();
+        if let Some(simd_mode) = self.simd_mode
+            && simd_mode != SimdMode::Auto
+        {
+            headers.add(X_MINIO_SIMD_MODE, simd_mode.as_str());
+        }
+
         Ok(TablesRequest::builder()
             .client(self.client)
             .method(Method::POST)
@@ -126,6 +140,7 @@ impl ToTablesRequest for PlanTableScan {
                 encode_namespace(&self.namespace),
                 self.table
             ))
+            .headers(headers)
             .body(Some(body))
             .build())
     }

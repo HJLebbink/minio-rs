@@ -1,0 +1,172 @@
+MINIO AISTOR BUG: DOUBLE-LOCKING IN S3 TABLES REGISTRY ACCESS
+=============================================================
+
+SUMMARY
+-------
+The S3 Tables implementation has a double-locking bug that causes HTTP 500
+errors under concurrent load. The code acquires a namespace lock (NSLock)
+and then calls functions that try to acquire file-level locks internally,
+causing "The process cannot access the file because it is being used by
+another process" errors.
+
+
+PROOF OF BUG
+------------
+Run these two commands and compare results:
+
+    cargo run --example iceberg_spec_test -- --concurrency 5
+    # Result: 41 passed, 9 failed (namespace_exists returns HTTP 500)
+
+    cargo run --example iceberg_spec_test -- --concurrency 1
+    # Result: 43 passed, 7 failed (namespace_exists returns HTTP 204)
+
+The ONLY difference is concurrency. Same code, same server, same data.
+With concurrency=1, namespace_exists passes. With concurrency=5, it fails.
+
+
+SERVER LOG EVIDENCE
+-------------------
+MinIO server logs show this error during concurrent requests:
+
+    API: NamespaceExists(bucket=bucket, object=wh-6807fa-000032)
+    Error: failed to read warehouse registry: The process cannot access
+           the file because it is being used by another process.
+    Stack:
+       3: cmd/tables-api-handlers.go:464:cmd.tablesAPIHandlers.NamespaceExists()
+
+
+ROOT CAUSE - FOUND IN CODE
+--------------------------
+File: cmd/tables-object-layer-impl.go
+
+The bug is in GetNamespace() starting at line 882:
+
+    func (i TablesObjectLayer) GetNamespace(...) {
+        // Line 891: Acquires NSLock read lock
+        whRelease, err := i.lockWarehouseForRead(ctx, warehouse, true)
+        defer whRelease()
+
+        // Line 898: PROBLEM - calls readNamespaceRegistry WITHOUT NoLock
+        nsRegistry, err := readNamespaceRegistry(ctx, i.objectLayer, warehouse)
+        //                 ^^^^^^^^^^^^^^^^^^^^^^
+        //                 This function defaults to ObjectOptions{} which means
+        //                 NoLock: false, so GetObjectNInfo tries to acquire
+        //                 ANOTHER lock internally!
+    }
+
+The call chain is:
+1. GetNamespace() acquires NSLock via lockWarehouseForRead()
+2. GetNamespace() calls readNamespaceRegistry()
+3. readNamespaceRegistry() calls readNamespaceRegistryWithOpts() with empty ObjectOptions{}
+4. readNamespaceRegistryWithOpts() calls GetObjectNInfo() with NoLock: false
+5. GetObjectNInfo() tries to acquire a file lock
+6. Under concurrent load, this second lock acquisition FAILS
+
+Same pattern exists in:
+- ListWarehouses() - line 193: calls readWarehouseRegistry() after holding lock
+- GetWarehouse() - line 259: calls readWarehouseRegistry() after holding lock
+- NamespaceExists() - line 928: calls readNamespaceRegistry() after holding lock
+- ListNamespaces() - line 960: calls readNamespaceRegistry() after holding lock
+
+
+THE FIX
+-------
+Change all calls that happen AFTER acquiring a lock to use NoLock: true.
+
+File: cmd/tables-object-layer-impl.go
+
+BEFORE (line 898):
+    nsRegistry, err := readNamespaceRegistry(ctx, i.objectLayer, warehouse)
+
+AFTER:
+    nsRegistry, err := readNamespaceRegistryWithOpts(ctx, i.objectLayer, warehouse, ObjectOptions{NoLock: true})
+
+
+All locations that need fixing:
+
+1. GetNamespace() line 898:
+   - readNamespaceRegistry(ctx, i.objectLayer, warehouse)
+   + readNamespaceRegistryWithOpts(ctx, i.objectLayer, warehouse, ObjectOptions{NoLock: true})
+
+2. NamespaceExists() line 928:
+   - readNamespaceRegistry(ctx, i.objectLayer, warehouse)
+   + readNamespaceRegistryWithOpts(ctx, i.objectLayer, warehouse, ObjectOptions{NoLock: true})
+
+3. ListNamespaces() line 960:
+   - readNamespaceRegistry(ctx, i.objectLayer, warehouse)
+   + readNamespaceRegistryWithOpts(ctx, i.objectLayer, warehouse, ObjectOptions{NoLock: true})
+
+4. ListWarehouses() line 193:
+   - readWarehouseRegistry(ctx, i.objectLayer)
+   + readWarehouseRegistryWithOpts(ctx, i.objectLayer, ObjectOptions{NoLock: true})
+
+5. GetWarehouse() line 259:
+   - readWarehouseRegistry(ctx, i.objectLayer)
+   + readWarehouseRegistryWithOpts(ctx, i.objectLayer, ObjectOptions{NoLock: true})
+
+
+WHY THIS IS THE CORRECT FIX
+---------------------------
+The codebase already follows this pattern in OTHER places. For example:
+
+File: cmd/tables-object-layer-impl.go line 69 (CreateWarehouse):
+    registry, err := readWarehouseRegistryWithOpts(ctx, i.objectLayer, ObjectOptions{NoLock: true})
+    //                                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+    // CORRECT: Uses NoLock: true because caller already holds lock
+
+File: cmd/tables-object-layer-impl.go line 322 (DeleteWarehouse):
+    registry, err := readWarehouseRegistryWithOpts(ctx, i.objectLayer, ObjectOptions{NoLock: true})
+    // CORRECT: Uses NoLock: true
+
+File: cmd/tables-object-layer-impl.go line 413 (WarehouseExists):
+    registry, err := readWarehouseRegistryWithOpts(ctx, i.objectLayer, ObjectOptions{NoLock: true})
+    // CORRECT: Uses NoLock: true
+
+So the fix is consistent with the existing code patterns. The bug is simply
+that some functions were missed when implementing this pattern.
+
+
+SIMPLE REPRODUCTION SCRIPT
+--------------------------
+Save this as reproduce-bug.sh and run it:
+
+#!/bin/bash
+# Start MinIO first:
+# MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin ./minio server /data
+
+# Create warehouse and namespace
+curl -s -X POST "http://localhost:9000/_iceberg/v1/warehouses" \
+  --aws-sigv4 "aws:amz:us-east-1:s3" -u "minioadmin:minioadmin" \
+  -H "Content-Type: application/json" -d '{"name":"test-wh"}'
+
+curl -s -X POST "http://localhost:9000/_iceberg/v1/warehouses/test-wh/namespaces" \
+  --aws-sigv4 "aws:amz:us-east-1:s3" -u "minioadmin:minioadmin" \
+  -H "Content-Type: application/json" -d '{"namespace":["test-ns"]}'
+
+# Send 20 concurrent HEAD requests
+echo "Sending 20 concurrent requests. HTTP 500 = BUG"
+for i in {1..20}; do
+  (curl -s -X HEAD "http://localhost:9000/_iceberg/v1/warehouses/test-wh/namespaces/test-ns" \
+    --aws-sigv4 "aws:amz:us-east-1:s3" -u "minioadmin:minioadmin" \
+    -w "Request $i: HTTP %{http_code}\n" -o /dev/null) &
+done
+wait
+
+
+EXPECTED OUTPUT (WITH BUG)
+--------------------------
+Request 1: HTTP 204
+Request 2: HTTP 204
+Request 3: HTTP 500   <-- BUG: Should be 204
+Request 4: HTTP 204
+Request 5: HTTP 500   <-- BUG: Should be 204
+Request 6: HTTP 204
+...
+
+
+IMPACT
+------
+- Any production workload with concurrent S3 Tables requests will hit this
+- Affects: NamespaceExists, GetNamespace, ListNamespaces, ListWarehouses, GetWarehouse
+- Workaround: Serialize all requests (not practical)
+- Severity: HIGH - breaks basic concurrent access patterns
