@@ -23,6 +23,7 @@ rustls-tls = ["reqwest/rustls-tls"]
 ring = ["dep:ring"]
 
 [dependencies]
+anyhow = "1.0"
 async-recursion = "1.1.1"
 async-trait = "0.1.88"
 base64 = "0.22.1"
