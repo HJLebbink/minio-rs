@@ -27,7 +27,10 @@ use minio_common::test_context::TestContext;
 /// NOTE: The server validates the inventory destination when storing the
 /// config, so the generated template's placeholder destination bucket is
 /// rewritten to the (existing) test bucket.
-#[minio_macros::test]
+///
+/// The test server has no inventory API: the generate call returns 400
+/// "unsupported API call" in S3 mode and 501 NotSupported in Express mode.
+#[minio_macros::test(ignore = "test server does not implement the inventory API")]
 async fn inventory(ctx: TestContext, bucket: BucketName) {
     let id = "inv-test-1";
 
