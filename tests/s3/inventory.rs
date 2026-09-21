@@ -27,7 +27,12 @@ use minio_common::test_context::TestContext;
 /// NOTE: The server validates the inventory destination when storing the
 /// config, so the generated template's placeholder destination bucket is
 /// rewritten to the (existing) test bucket.
-#[minio_macros::test]
+///
+/// AIStor no longer serves this API and offers no successor, so the builders in
+/// `src/s3/builders/inventory.rs` are candidates for removal.
+#[minio_macros::test(
+    ignore = "AIStor no longer serves bucket inventory: the query returns BadRequest"
+)]
 async fn inventory(ctx: TestContext, bucket: BucketName) {
     let id = "inv-test-1";
 
